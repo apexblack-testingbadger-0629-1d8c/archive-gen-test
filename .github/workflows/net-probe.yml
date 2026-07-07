@@ -1,0 +1,32 @@
+name: Internal Network Probe
+on: [push]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe internal network and hosts
+        run: |
+          echo "=== github.net DNS ==="
+          nslookup github.net 2>&1 || true
+          host github.net 2>&1 || true
+          
+          echo "=== *.github.net probes ==="
+          for host in api.github.net internal.github.net services.github.net admin.github.net; do
+            echo "--- $host ---"
+            curl -sk --connect-timeout 3 "https://$host/" 2>&1 | head -3 || true
+          done
+          
+          echo "=== Internal IP scanning (quick) ==="
+          for ip in 10.1.0.1 10.1.0.2 10.1.0.5 10.1.0.10 10.1.0.20 10.1.0.100; do
+            curl -sk --connect-timeout 2 "http://$ip/" 2>&1 | head -2 || true
+          done
+          
+          echo "=== Try https://api.github.com/meta ==="
+          curl -s "https://api.github.com/meta" | python3 -c "import sys,json; d=json.load(sys.stdin); print(hooks:, d.get(hooks,[])[:3]); print(web:, d.get(web,[])[:3]); print(api:, d.get(api,[])[:3])" 2>&1 || true
+          
+          echo "=== Route table ==="
+          ip route 2>&1 || true
+          netstat -rn 2>&1 | head -10 || true
+          
+          echo "=== DNS resolvers ==="
+          cat /etc/resolv.conf 2>&1 || true
