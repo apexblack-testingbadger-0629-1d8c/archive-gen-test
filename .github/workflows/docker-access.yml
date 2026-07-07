@@ -1,0 +1,26 @@
+name: Docker Access Test
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Docker access
+        run: |
+          echo "=== Docker socket ==="
+          ls -la /var/run/docker.sock 2>&1
+          
+          echo "=== Docker info ==="
+          docker info 2>&1 | head -10
+          
+          echo "=== Docker ps ==="
+          docker ps -a 2>&1
+          
+          echo "=== Docker images ==="
+          docker images 2>&1
+          
+          echo "=== Pull without auth ==="
+          docker pull alpine:latest 2>&1 || true
+          
+          echo "=== Check groups ==="
+          groups 2>&1
+          id 2>&1
