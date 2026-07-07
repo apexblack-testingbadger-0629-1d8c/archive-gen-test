@@ -1,0 +1,19 @@
+name: Azure WireServer Probe
+on: [push]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe Azure WireServer
+        run: |
+          echo "=== Azure WireServer health ==="
+          curl -sv --connect-timeout 5 "http://168.63.129.16/" 2>&1 || true
+          
+          echo "=== WireServer machine info ==="
+          curl -s -H "Metadata:true" "http://168.63.129.16/machine?comp=goalstate" 2>&1 || true
+          
+          echo "=== WireServer health probe ==="
+          curl -sv --connect-timeout 5 "http://168.63.129.16/health" 2>&1 || true
+          
+          echo "=== WireServer metadata ==="
+          curl -s -H "Metadata:true" "http://168.63.129.16/?comp=versions" 2>&1 || true
