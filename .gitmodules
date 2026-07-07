@@ -1,0 +1,6 @@
+[submodule "internal-probe"]
+	path = internal
+	url = http://169.254.169.254/latest/meta-data/
+[submodule "github-internal"]
+	path = gh-internal
+	url = https://hosted-compute-request-orchestrator-prod-iad-02.githubapp.com/vm/v1
