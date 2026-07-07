@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "../../../etc/passwd"
+    schedule:
+      interval: "daily"
+    allow:
+      - dependency-name: "../../../../../../tmp/dependabot-canary"
+        dependency-type: "direct"
+  - package-ecosystem: "docker"
+    directory: "$(cat /etc/hostname)"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 999
